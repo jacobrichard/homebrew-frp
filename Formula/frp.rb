@@ -21,7 +21,6 @@ class Frp < Formula
     (etc/"frp").install "conf/frpc_full_example.toml"
 
     if OS.linux?
-      # frps systemd unit
       (buildpath/"frps.service").write <<~UNIT
         [Unit]
         Description=frp server
@@ -38,7 +37,6 @@ class Frp < Formula
         WantedBy=multi-user.target
       UNIT
 
-      # frpc systemd unit
       (buildpath/"frpc.service").write <<~UNIT
         [Unit]
         Description=frp client
@@ -60,7 +58,6 @@ class Frp < Formula
     end
 
     if OS.mac?
-      # frps launchd plist
       (buildpath/"com.frp.frps.plist").write <<~PLIST
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -75,7 +72,7 @@ class Frp < Formula
                 <string>#{etc}/frp/frps.toml</string>
             </array>
             <key>RunAtLoad</key>
-            <true/>
+            <false/>
             <key>KeepAlive</key>
             <true/>
             <key>StandardOutPath</key>
@@ -86,7 +83,6 @@ class Frp < Formula
         </plist>
       PLIST
 
-      # frpc launchd plist
       (buildpath/"com.frp.frpc.plist").write <<~PLIST
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -101,7 +97,7 @@ class Frp < Formula
                 <string>#{etc}/frp/frpc.toml</string>
             </array>
             <key>RunAtLoad</key>
-            <true/>
+            <false/>
             <key>KeepAlive</key>
             <true/>
             <key>StandardOutPath</key>
@@ -112,42 +108,108 @@ class Frp < Formula
         </plist>
       PLIST
 
-      (prefix/"com.frp.frps.plist").install "com.frp.frps.plist"
-      (prefix/"com.frp.frpc.plist").install "com.frp.frpc.plist"
+      prefix.install "com.frp.frps.plist"
+      prefix.install "com.frp.frpc.plist"
+    end
+  end
+
+  def post_install
+    (var/"log").mkpath
+
+    if OS.mac?
+      launch_agents = Pathname(Dir.home)/"Library/LaunchAgents"
+      launch_agents.mkpath
+      %w[frps frpc].each do |name|
+        plist = prefix/"com.frp.#{name}.plist"
+        target = launch_agents/"com.frp.#{name}.plist"
+        target.unlink if target.exist? || target.symlink?
+        target.make_symlink(plist)
+      end
+    end
+
+    if OS.linux?
+      systemd_dir = Pathname("/etc/systemd/system")
+      %w[frps frpc].each do |name|
+        unit = lib/"systemd/system/#{name}.service"
+        target = systemd_dir/"#{name}.service"
+        if systemd_dir.writable?
+          target.unlink if target.exist? || target.symlink?
+          target.make_symlink(unit)
+        end
+      end
+    end
+  end
+
+  def post_uninstall
+    if OS.mac?
+      launch_agents = Pathname(Dir.home)/"Library/LaunchAgents"
+      %w[frps frpc].each do |name|
+        label = "com.frp.#{name}"
+        plist = launch_agents/"#{label}.plist"
+        system "launchctl", "bootout", "gui/#{Process.uid}/#{label}" if plist.exist?
+        plist.unlink if plist.exist? || plist.symlink?
+      end
+    end
+
+    if OS.linux?
+      %w[frps frpc].each do |name|
+        unit = Pathname("/etc/systemd/system/#{name}.service")
+        unit.unlink if unit.symlink? && !unit.exist?
+      end
     end
   end
 
   def caveats
-    <<~EOS
-      Config files are located at:
-        #{etc}/frp/frps.toml
-        #{etc}/frp/frpc.toml
-
-      Full example configs are at:
-        #{etc}/frp/frps_full_example.toml
-        #{etc}/frp/frpc_full_example.toml
-
-      To start the frp server (frps):
-        #{service_instructions("frps")}
-
-      To start the frp client (frpc):
-        #{service_instructions("frpc")}
-    EOS
-  end
-
-  def service_instructions(name)
     if OS.mac?
-      <<~MSG.chomp
-        sudo cp #{opt_prefix}/com.frp.#{name}.plist /Library/LaunchDaemons/
-          sudo launchctl load /Library/LaunchDaemons/com.frp.#{name}.plist
-          Or as a user agent:
-          cp #{opt_prefix}/com.frp.#{name}.plist ~/Library/LaunchAgents/
-          launchctl load ~/Library/LaunchAgents/com.frp.#{name}.plist
-      MSG
+      <<~EOS
+        Config files:
+          #{etc}/frp/frps.toml
+          #{etc}/frp/frpc.toml
+
+        Full example configs:
+          #{etc}/frp/frps_full_example.toml
+          #{etc}/frp/frpc_full_example.toml
+
+        LaunchAgent plists have been symlinked to ~/Library/LaunchAgents/.
+
+        To start the frp server:
+          launchctl load ~/Library/LaunchAgents/com.frp.frps.plist
+
+        To stop the frp server:
+          launchctl unload ~/Library/LaunchAgents/com.frp.frps.plist
+
+        To start the frp client:
+          launchctl load ~/Library/LaunchAgents/com.frp.frpc.plist
+
+        To stop the frp client:
+          launchctl unload ~/Library/LaunchAgents/com.frp.frpc.plist
+
+        To run as a system-wide daemon instead (requires root):
+          sudo cp #{opt_prefix}/com.frp.frps.plist /Library/LaunchDaemons/
+          sudo launchctl load /Library/LaunchDaemons/com.frp.frps.plist
+      EOS
     else
-      <<~MSG.chomp
-        sudo systemctl enable --now #{name}
-      MSG
+      <<~EOS
+        Config files:
+          #{etc}/frp/frps.toml
+          #{etc}/frp/frpc.toml
+
+        Full example configs:
+          #{etc}/frp/frps_full_example.toml
+          #{etc}/frp/frpc_full_example.toml
+
+        Systemd unit files have been symlinked to /etc/systemd/system/.
+        If the install was not run as root, you will need to link them manually:
+
+          sudo systemctl link #{opt_lib}/systemd/system/frps.service
+          sudo systemctl link #{opt_lib}/systemd/system/frpc.service
+
+        To enable and start the frp server:
+          sudo systemctl enable --now frps
+
+        To enable and start the frp client:
+          sudo systemctl enable --now frpc
+      EOS
     end
   end
 
@@ -155,7 +217,6 @@ class Frp < Formula
     assert_match version.to_s, shell_output("#{bin}/frps --version")
     assert_match version.to_s, shell_output("#{bin}/frpc --version")
 
-    # Verify server starts and binds
     port = free_port
     (testpath/"frps_test.toml").write <<~TOML
       bindPort = #{port}
