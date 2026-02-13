@@ -29,7 +29,7 @@ class Frp < Formula
         [Service]
         Type=simple
         ExecStart=#{opt_bin}/frps -c #{etc}/frp/frps.toml
-        Restart=on-failure
+        Restart=always
         RestartSec=5
         LimitNOFILE=1048576
 
@@ -45,7 +45,7 @@ class Frp < Formula
         [Service]
         Type=simple
         ExecStart=#{opt_bin}/frpc -c #{etc}/frp/frpc.toml
-        Restart=on-failure
+        Restart=always
         RestartSec=5
         LimitNOFILE=1048576
 
