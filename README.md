@@ -1,12 +1,15 @@
 # homebrew-frp
 
-Homebrew tap for [frp](https://github.com/fatedier/frp) (fast reverse proxy). Installs both `frps` (server) and `frpc` (client) with service definitions for macOS and Linux.
+Homebrew tap for [frp](https://github.com/fatedier/frp) (fast reverse proxy). Provides separate formulae for `frps` (server) and `frpc` (client).
 
 ## Install
 
 ```bash
 brew tap jacobrichard/frp
-brew install frp
+
+# Install server, client, or both
+brew install frps
+brew install frpc
 ```
 
 ## Configuration
@@ -32,76 +35,31 @@ $EDITOR $(brew --prefix)/etc/frp/frpc.toml
 
 ## Running services
 
-Services do not start automatically after install. Use the commands below to start them manually.
-
-### macOS (launchd)
-
-Plist files are symlinked to `~/Library/LaunchAgents/` during install.
+Services do not start automatically after install.
 
 ```bash
-# Start
-launchctl load ~/Library/LaunchAgents/com.frp.frps.plist
-launchctl load ~/Library/LaunchAgents/com.frp.frpc.plist
+# Start and restart at login
+brew services start frps
+brew services start frpc
 
 # Stop
-launchctl unload ~/Library/LaunchAgents/com.frp.frps.plist
-launchctl unload ~/Library/LaunchAgents/com.frp.frpc.plist
-```
-
-To run as a system-wide daemon instead (requires root):
-
-```bash
-sudo cp $(brew --prefix)/com.frp.frps.plist /Library/LaunchDaemons/
-sudo launchctl load /Library/LaunchDaemons/com.frp.frps.plist
-```
-
-Logs are written to `$(brew --prefix)/var/log/frps.log` and `$(brew --prefix)/var/log/frpc.log`.
-
-### Linux (systemd)
-
-Unit files are symlinked to `/etc/systemd/system/` during install if the directory is writable. If not, link them manually:
-
-```bash
-sudo systemctl link $(brew --prefix)/lib/systemd/system/frps.service
-sudo systemctl link $(brew --prefix)/lib/systemd/system/frpc.service
-```
-
-Then enable and start:
-
-```bash
-# Start and enable on boot
-sudo systemctl enable --now frps
-sudo systemctl enable --now frpc
-
-# Or start without enabling on boot
-sudo systemctl start frps
-sudo systemctl start frpc
-
-# Stop
-sudo systemctl stop frps
-sudo systemctl stop frpc
+brew services stop frps
+brew services stop frpc
 
 # Check status
-systemctl status frps
-systemctl status frpc
+brew services list
 ```
 
 ## Service behavior
 
-- Services restart automatically if the process exits (5 second delay)
-- macOS: `KeepAlive` is enabled — launchd restarts on any exit
-- Linux: `Restart=always` — systemd restarts on any exit
-- Services do **not** start on boot/login unless explicitly enabled
+- Services restart automatically if the process exits
+- Services do **not** start on boot/login unless started with `brew services start`
+- Logs are written to `$(brew --prefix)/var/log/frps.log` and `$(brew --prefix)/var/log/frpc.log`
 
 ## Uninstall
 
 ```bash
-brew uninstall frp
+brew services stop frps frpc
+brew uninstall frps frpc
 brew untap jacobrichard/frp
-```
-
-On macOS, running services are stopped and plist symlinks are cleaned up automatically. On Linux, remove any dangling symlinks or disable the services first:
-
-```bash
-sudo systemctl disable --now frps frpc
 ```
