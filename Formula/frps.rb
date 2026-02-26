@@ -12,7 +12,7 @@ class Frps < Formula
 
   def install
     ENV["CGO_ENABLED"] = "0"
-    system "go", "build", *std_go_args(ldflags: "-s -w", output: bin/"frps"), "-tags", "frps", "./cmd/frps"
+    system "bash", "-c", "go build -trimpath -o #{bin}/frps -ldflags='-s -w' -tags frps ./cmd/frps"
 
     (etc/"frp").install "conf/frps.toml"
     (etc/"frp").install "conf/frps_full_example.toml"
