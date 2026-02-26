@@ -16,7 +16,7 @@ class Frps < Formula
 
     (etc/"frp").install "conf/frps.toml"
     (etc/"frp").install "conf/frps_full_example.toml"
-    bin.install "build/frps"
+    bin.install "#{bin}/frps"
   end
 
   service do

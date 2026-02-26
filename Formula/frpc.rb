@@ -16,7 +16,7 @@ class Frpc < Formula
 
     (etc/"frp").install "conf/frpc.toml"
     (etc/"frp").install "conf/frpc_full_example.toml"
-    bin.install "build/frpc"
+    bin.install "#{bin}/frpc"
   end
 
   service do
