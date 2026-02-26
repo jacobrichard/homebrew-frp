@@ -2,7 +2,7 @@ class Frpc < Formula
   desc "frp client - fast reverse proxy client"
   homepage "https://github.com/fatedier/frp"
   url "https://github.com/fatedier/frp/archive/refs/tags/v0.62.1.tar.gz"
-  sha256 ""
+  sha256 "d0513f1c08f7a6b31f91ddeca64ccdec43726c20d20103de5220055daa04b903"
   license "Apache-2.0"
   head "https://github.com/fatedier/frp.git", branch: "dev"
 
